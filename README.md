@@ -39,9 +39,6 @@
 ### To Run the Project
 
 
-
-CLIENT CODE lINK: https://github.com/devalienbrain/sports-facility-booking-client
-
 1. In the terminal, run the following command:
    ```sh
    npm run start:dev
@@ -49,3 +46,7 @@ CLIENT CODE lINK: https://github.com/devalienbrain/sports-facility-booking-clien
    This will start the project in development mode.
 
 Feel free to replace `<url>` with the actual URL of your GitHub repository and `<project-directory>` with the appropriate directory name if needed.
+
+
+
+CLIENT CODE lINK: https://github.com/devalienbrain/sports-facility-booking-client
