@@ -1,3 +1,4 @@
+// All About Facility Starts
 // facility.interface.ts
 
 import { Document, Model } from "mongoose";
@@ -234,6 +235,7 @@ router.get("/", getAllFacilities);
 
 export const FacilityRoutes = router;
 
+// All About Facility Ends
 // user.interface.ts
 import { Model } from "mongoose";
 
@@ -605,3 +607,308 @@ const moduleRoutes = [
 moduleRoutes.forEach((route) => router.use(route.path, route.route));
 
 export default router;
+
+
+// All About Booking Starts
+// booking.interface.ts
+import { Document, Model, Types } from "mongoose";
+import { TUser } from "../user/user.interface";
+import { TFacility } from "../facility/facility.interface";
+
+export interface TBooking extends Document {
+  date: Date;
+  startTime: Date;
+  endTime: Date;
+  user: Types.ObjectId | TUser;
+  facility: Types.ObjectId | TFacility;
+  payableAmount: number;
+  isBooked: "confirmed" | "unconfirmed" | "canceled";
+}
+
+export interface BookingModel extends Model<TBooking> {}
+// Booking.model.ts
+import { Schema, model } from "mongoose";
+import { BookingModel, TBooking } from "./booking.interface";
+
+const bookingSchema = new Schema<TBooking>(
+  {
+    date: { type: Date, required: true },
+    startTime: { type: Date, required: true },
+    endTime: { type: Date, required: true },
+    user: { type: Schema.Types.ObjectId, ref: "User", required: true },
+    facility: { type: Schema.Types.ObjectId, ref: "Facility", required: true },
+    payableAmount: { type: Number, required: true },
+    isBooked: {
+      type: String,
+      enum: ["confirmed", "unconfirmed", "canceled"],
+      default: "unconfirmed",
+    },
+  },
+  {
+    timestamps: true,
+  }
+);
+
+export const Booking = model<TBooking, BookingModel>("Booking", bookingSchema);
+// booking.route.ts
+import { Router } from "express";
+import {
+  cancelBooking,
+  createBooking,
+  getAllBookings,
+  getUserBookings,
+} from "./booking.controller";
+import auth from "../../middlewares/auth";
+
+const router = Router();
+
+router.post("/", auth("user"), createBooking);
+router.get("/", auth("admin"), getAllBookings);
+router.get("/user", auth("user"), getUserBookings);
+router.delete("/:id", auth("user"), cancelBooking);
+
+export const BookingRoutes = router;
+// booking.service.ts
+import { ObjectId } from "mongoose";
+import { Facility } from "../facility/facility.model";
+
+import { TBooking } from "./booking.interface";
+import { Booking } from "./booking.model";
+
+const checkAvailability = async (date: string) => {
+  const bookings = await Booking.find({
+    date: new Date(date),
+    isBooked: "confirmed",
+  });
+  // Assuming full day availability from 8 AM to 10 PM
+  const timeSlots = [
+    { startTime: "08:00", endTime: "10:00" },
+    { startTime: "10:00", endTime: "12:00" },
+    { startTime: "12:00", endTime: "14:00" },
+    { startTime: "14:00", endTime: "16:00" },
+    { startTime: "16:00", endTime: "18:00" },
+    { startTime: "18:00", endTime: "20:00" },
+    { startTime: "20:00", endTime: "22:00" },
+  ];
+
+  bookings.forEach((booking) => {
+    timeSlots.forEach((slot) => {
+      if (
+        (new Date(`1970-01-01T${slot.startTime}:00.000Z`) <=
+          booking.startTime &&
+          new Date(`1970-01-01T${slot.endTime}:00.000Z`) > booking.startTime) ||
+        (new Date(`1970-01-01T${slot.startTime}:00.000Z`) < booking.endTime &&
+          new Date(`1970-01-01T${slot.endTime}:00.000Z`) >= booking.endTime)
+      ) {
+        slot.startTime = "";
+        slot.endTime = "";
+      }
+    });
+  });
+
+  return timeSlots.filter((slot) => slot.startTime && slot.endTime);
+};
+
+const createBooking = async (payload: Partial<TBooking>): Promise<TBooking> => {
+  // console.log(payload);
+  const { startTime, endTime, facility } = payload;
+
+  // Validate and convert startTime and endTime to Date objects
+  const startTimeDate = new Date(`${payload.date}T${startTime}:00.000Z`);
+  const endTimeDate = new Date(`${payload.date}T${endTime}:00.000Z`);
+
+  if (isNaN(startTimeDate.getTime()) || isNaN(endTimeDate.getTime())) {
+    throw new Error("Invalid start time or end time");
+  }
+
+  // Fetch the facility document
+  const facilityDoc = await Facility.findById(facility);
+  if (!facilityDoc) {
+    throw new Error("Facility not found");
+  }
+
+  // Calculate the payable amount
+  const duration =
+    (endTimeDate.getTime() - startTimeDate.getTime()) / (1000 * 60 * 60);
+  const payableAmount = duration * facilityDoc.pricePerHour;
+
+  // Create the booking document
+  const booking = new Booking({
+    ...payload,
+    startTime: startTimeDate,
+    endTime: endTimeDate,
+    payableAmount,
+    isBooked: "confirmed",
+  });
+
+  // Save the booking document
+  await booking.save();
+  return booking;
+};
+
+const getAllBookings = async (): Promise<TBooking[]> => {
+  return await Booking.find().populate("user").populate("facility");
+};
+
+const getUserBookings = async (userId: ObjectId): Promise<TBooking[]> => {
+  return await Booking.find({ user: userId }).populate("facility");
+};
+
+const cancelBooking = async (id: string): Promise<TBooking | null> => {
+  return await Booking.findByIdAndUpdate(
+    id,
+    { isBooked: "canceled" },
+    { new: true }
+  ).populate("user facility");
+};
+
+export const BookingService = {
+  checkAvailability,
+  createBooking,
+  getAllBookings,
+  getUserBookings,
+  cancelBooking,
+};
+// booking.controller.ts
+import { Request, Response, NextFunction } from "express";
+import { BookingService } from "./booking.service";
+import catchAsync from "../../utils/catchAsync";
+
+export const checkAvailability = catchAsync(
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const dateString = req.query.date as string;
+      let date: Date;
+
+      if (dateString) {
+        // Extract day, month, and year
+        const [day, month, year] = dateString.split("-").map(Number);
+        // Format to YYYY-MM-DD
+        const formattedDate = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+        date = new Date(formattedDate);
+      } else {
+        date = new Date();
+      }
+
+      console.log({ date });
+
+      if (isNaN(date.getTime())) {
+        throw new Error("Invalid date format. Please use DD-MM-YYYY format.");
+      }
+
+      const availableSlots = await BookingService.checkAvailability(
+        date.toISOString().split("T")[0]
+      );
+      res.status(200).json({
+        success: true,
+        statusCode: 200,
+        message: "Availability checked successfully",
+        data: availableSlots,
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+);
+
+export const createBooking = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.user!;
+    const bookingData = { ...req.body, user: userId };
+    const booking = await BookingService.createBooking(bookingData);
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Booking created successfully",
+      data: booking,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getAllBookings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const bookings = await BookingService.getAllBookings();
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "No Data Found",
+        data: [],
+      });
+    }
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Bookings retrieved successfully",
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getUserBookings = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const { userId } = req.user!;
+    const bookings = await BookingService.getUserBookings(userId);
+    if (bookings.length === 0) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "No Data Found",
+        data: [],
+      });
+    }
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "User bookings retrieved successfully",
+      data: bookings,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const cancelBooking = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const booking = await BookingService.cancelBooking(req.params.id);
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Booking canceled successfully",
+      data: booking,
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+// bookingAvailability.route.ts
+import { Router } from "express";
+import { checkAvailability } from "./booking.controller";
+
+const router = Router();
+
+router.get("/", checkAvailability);
+
+export const BookingAvailabilityCheckRoutes = router;
+
+// All About Booking Ends
