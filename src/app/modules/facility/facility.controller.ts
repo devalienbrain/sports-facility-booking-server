@@ -83,3 +83,30 @@ export const getAllFacilities = async (
     next(error);
   }
 };
+
+export const getFacilityById = async (
+  req: Request,
+  res: Response,
+  next: NextFunction
+) => {
+  try {
+    const facility = await FacilityService.getFacilityById(req.params.id);
+
+    if (!facility) {
+      return res.status(404).json({
+        success: false,
+        statusCode: 404,
+        message: "Facility not found",
+      });
+    }
+
+    res.status(200).json({
+      success: true,
+      statusCode: 200,
+      message: "Facility retrieved successfully",
+      data: facility,
+    });
+  } catch (error) {
+    next(error);
+  }
+};

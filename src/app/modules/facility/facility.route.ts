@@ -3,6 +3,7 @@ import {
   createFacility,
   deleteFacility,
   getAllFacilities,
+  getFacilityById,
   updateFacility,
 } from "./facility.controller";
 import auth from "../../middlewares/auth";
@@ -25,5 +26,6 @@ router.put(
 );
 router.delete("/:id", auth("admin"), deleteFacility);
 router.get("/", getAllFacilities);
+router.get("/:id", getFacilityById);
 
 export const FacilityRoutes = router;

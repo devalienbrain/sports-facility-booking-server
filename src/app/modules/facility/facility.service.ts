@@ -30,9 +30,15 @@ const getAllFacilities = async (): Promise<TFacility[]> => {
   return await Facility.find({ isDeleted: false });
 };
 
+const getFacilityById = async (id: string): Promise<TFacility | null> => {
+  const facility = await Facility.findById(id).where({ isDeleted: false });
+  return facility;
+};
+
 export const FacilityService = {
   createFacility,
   updateFacility,
   deleteFacility,
   getAllFacilities,
+  getFacilityById,
 };
