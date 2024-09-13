@@ -4,6 +4,7 @@ export type TRole = "user" | "admin";
 
 export interface TUser {
   _id: string;
+  photoUrl: string;
   name: string;
   email: string;
   password: string;

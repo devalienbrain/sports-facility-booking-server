@@ -5,6 +5,9 @@ const createFacilityValidationSchema = z.object({
     name: z
       .string({ required_error: "Name is required" })
       .min(1, "Name cannot be empty"),
+    imageUrl: z
+      .string({ required_error: "ImageUrl is required" })
+      .min(1, "ImageUrl cannot be empty"),
     description: z
       .string({ required_error: "Description is required" })
       .min(1, "Description cannot be empty"),
@@ -21,6 +24,7 @@ const createFacilityValidationSchema = z.object({
 const updateFacilityValidationSchema = z.object({
   body: z.object({
     name: z.string().optional(),
+    imageUrl: z.string().optional(),
     description: z.string().optional(),
     pricePerHour: z
       .number()
