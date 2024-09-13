@@ -6,7 +6,11 @@ const createUserIntoDB = async (userData: TUser) => {
   const newUser = await User.create(userData);
   return newUser;
 };
+const getAllUsers = async (): Promise<TUser[]> => {
+  return await User.find();
+};
 
 export const UserServices = {
   createUserIntoDB,
+  getAllUsers,
 };
