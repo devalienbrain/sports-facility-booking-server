@@ -7,11 +7,13 @@ interface IOrder extends Document {
     phone: string;
     address: string;
   };
-
+  bookingIds: Array<{
+    bookingId: mongoose.Schema.Types.ObjectId;
+  }>;
   totalPayableAmount: number;
   status: string;
   paymentStatus: string;
-  transactionId: string;
+  transactionId?: string; // Optional initially
 }
 
 const OrderSchema: Schema = new Schema(
@@ -22,7 +24,15 @@ const OrderSchema: Schema = new Schema(
       phone: { type: String, required: true },
       address: { type: String, required: true },
     },
-
+    bookingIds: [
+      {
+        bookingId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: "Booking", 
+          required: true,
+        },
+      },
+    ],
     totalPayableAmount: {
       type: Number,
       required: true,
@@ -38,8 +48,7 @@ const OrderSchema: Schema = new Schema(
       default: "Pending",
     },
     transactionId: {
-      type: String,
-      required: true,
+      type: String, // This will be added once the payment is successful
     },
   },
   {
