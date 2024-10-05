@@ -1,6 +1,7 @@
 import { Request, Response, NextFunction } from "express";
 import { BookingService } from "./booking.service";
 import catchAsync from "../../utils/catchAsync";
+import { ObjectId } from "mongoose";
 
 // Check availability controller
 export const checkAvailability = catchAsync(
@@ -64,7 +65,7 @@ export const getAllBookings = catchAsync(
 // Get user-specific bookings
 export const getUserBookings = catchAsync(
   async (req: Request, res: Response) => {
-    const { userId } = req.params;
+    const { userId} = req.params;
     // console.log(userId);
     const bookings = await BookingService.getUserBookings(userId);
     res.status(200).json({
@@ -74,6 +75,8 @@ export const getUserBookings = catchAsync(
     });
   }
 );
+
+
 
 // Cancel booking
 export const cancelBooking = catchAsync(async (req: Request, res: Response) => {

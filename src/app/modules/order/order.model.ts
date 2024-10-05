@@ -13,7 +13,8 @@ interface IOrder extends Document {
   totalPayableAmount: number;
   status: string;
   paymentStatus: string;
-  transactionId?: string; // Optional initially
+  transactionId?: string; 
+  createdAt?: Date;
 }
 
 const OrderSchema: Schema = new Schema(
@@ -48,7 +49,7 @@ const OrderSchema: Schema = new Schema(
       default: "Pending",
     },
     transactionId: {
-      type: String, // This will be added once the payment is successful
+      type: String, 
     },
   },
   {

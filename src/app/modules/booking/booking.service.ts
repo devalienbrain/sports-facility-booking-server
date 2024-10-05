@@ -75,7 +75,7 @@ const getAllBookings = async (): Promise<TBooking[]> => {
 };
 
 // Get bookings for a specific user
-const getUserBookings = async (userId: ObjectId): Promise<TBooking[]> => {
+const getUserBookings = async (userId: any): Promise<TBooking[]> => {
   return await Booking.find({ user: userId }).populate("facility");
 };
 
